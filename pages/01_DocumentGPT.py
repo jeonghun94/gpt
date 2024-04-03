@@ -1,3 +1,5 @@
+import os
+import re
 from langchain.prompts import ChatPromptTemplate
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
@@ -14,6 +16,16 @@ st.set_page_config(
     page_icon="📃",
 )
 
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+if "api_key" not in st.session_state:
+    st.session_state["api_key"] = None
+
+if "api_key_bool" not in st.session_state:
+    st.session_state["api_key_bool"] = False
+
+pattern = r'sk-.*'
 
 class ChatCallbackHandler(BaseCallbackHandler):
     message = ""
@@ -35,13 +47,18 @@ llm = ChatOpenAI(
     callbacks=[
         ChatCallbackHandler(),
     ],
+    openai_api_key=st.session_state["api_key"],
 )
 
 
 @st.cache_data(show_spinner="Embedding file...")
 def embed_file(file):
+
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
+
+    os.makedirs(f"./..cache/files/", exist_ok=True)
+
     with open(file_path, "wb") as f:
         f.write(file_content)
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
@@ -62,6 +79,9 @@ def embed_file(file):
 def save_message(message, role):
     st.session_state["messages"].append({"message": message, "role": role})
 
+def save_api_key(api_key):
+    st.session_state["api_key"] = api_key
+    st.session_state["api_key_bool"] = True
 
 def send_message(message, role, save=True):
     with st.chat_message(role):
@@ -116,23 +136,42 @@ with st.sidebar:
         type=["pdf", "txt", "docx"],
     )
 
-if file:
-    retriever = embed_file(file)
-    send_message("I'm ready! Ask away!", "ai", save=False)
-    paint_history()
-    message = st.chat_input("Ask anything about your file...")
-    if message:
-        send_message(message, "human")
-        chain = (
-            {
-                "context": retriever | RunnableLambda(format_docs),
-                "question": RunnablePassthrough(),
-            }
-            | prompt
-            | llm
-        )
-        with st.chat_message("ai"):
-            chain.invoke(message)
+with st.sidebar:
+    api_key = st.text_input("OPENAI_API_KEY를 입력 하세요.", disabled=st.session_state["api_key"] is not None).strip()
 
-else:
-    st.session_state["messages"] = []
+    if api_key:
+        save_api_key(api_key)
+        st.write("API_KEY가 저장되었습니다.")
+
+    button = st.button("저장")
+
+    if button:
+        save_api_key(api_key)
+        if api_key == "":
+            st.write("API_KEY를 입력 하세요.")
+
+if (st.session_state["api_key_bool"] == True) and (st.session_state["api_key"] != None):
+    if file:
+        retriever = embed_file(file)
+        send_message("I'm ready! Ask away!", "ai", save=False)
+        paint_history()
+        message = st.chat_input("Ask anything about your file")
+
+        if message:
+            if re.match(pattern, st.session_state["api_key"]):
+                send_message(message, "human")
+                chain = {
+                            "context": retriever | RunnableLambda(format_docs),
+                            "question": RunnablePassthrough(),
+                        } | prompt | llm
+
+                with st.chat_message("ai"):
+                    resposne = chain.invoke(message)
+            else:
+                message = "OPENAI_API_KEY가 잘못되었습니다. 다시 넣어주세요."
+                send_message(message, "ai")
+    else:
+        st.session_state["messages"] = []
+
+with st.sidebar:
+    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/01_DocumentGPT.py")
