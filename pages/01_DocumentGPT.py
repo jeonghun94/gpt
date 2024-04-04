@@ -124,9 +124,6 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-
-    
-
 with st.sidebar:
     file = st.file_uploader(
         "Upload a .txt .pdf or .docx file",
