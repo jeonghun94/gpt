@@ -123,34 +123,35 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
+
+    
+
 with st.sidebar:
     file = st.file_uploader(
         "Upload a .txt .pdf or .docx file",
         type=["pdf", "txt", "docx"],
     )
 
-    api_key = st.text_input("OPENAI_API_KEY를 입력 하세요.", disabled=st.session_state["api_key"] is not None).strip()
+with st.sidebar:
+    api_key = st.text_input("OPENAI_API_KEY를 넣어야 작동합니다.", disabled=st.session_state["api_key"] is not None).strip()
     button = st.button("저장")
 
     if api_key:
         save_api_key(api_key)
         st.success("API_KEY가 저장되었습니다.")
-        
-    st.subheader("JHUN'S GitHub Repository")
-    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/01_DocumentGPT.py")
-
-with st.sidebar:
-   
 
     if button:
         save_api_key(api_key)
         if api_key == "":
-            st.write("API_KEY를 입력 하세요.")
+            st.error("API_KEY를 넣어주세요.")
+
+    st.subheader("JHUN'S GitHub Repository")
+    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/01_DocumentGPT.py")
 
 if (st.session_state["api_key_bool"] == True) and (st.session_state["api_key"] != None):
     if file:
         retriever = embed_file(file)
-        send_message("I'm ready! Ask away AnyThings :)", "ai", save=False)
+        send_message("I'm ready! Ask away!", "ai", save=False)
         paint_history()
         message = st.chat_input("Ask anything about your file")
 
@@ -170,5 +171,4 @@ if (st.session_state["api_key_bool"] == True) and (st.session_state["api_key"] !
     else:
         st.session_state["messages"] = []
 
-    
 
