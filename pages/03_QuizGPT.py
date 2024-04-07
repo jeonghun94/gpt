@@ -68,6 +68,7 @@ llm = ChatOpenAI(
     callbacks=[
         StreamingStdOutCallbackHandler(),
     ],
+    # openai_api_key=st.session_state["api_key"],
 ).bind(
     function_calling=function_calling,
     function_call={
@@ -269,26 +270,55 @@ def wiki_search(term):
     docs = retriever.get_relevant_documents(term)
     return docs
 
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+if "api_key" not in st.session_state:
+    st.session_state["api_key"] = None
+
+if "api_key_bool" not in st.session_state:
+    st.session_state["api_key_bool"] = False
+
+pattern = r'sk-.*'
+
+def save_api_key(api_key):
+    st.session_state["api_key"] = api_key
+    st.session_state["api_key_bool"] = True
+
 with st.sidebar:
+    api_key = st.text_input("OPENAI_API_KEY를 넣어야 작동합니다.", disabled=st.session_state["api_key"] is not None).strip()
+    button = st.button("저장")
+    if api_key:
+        save_api_key(api_key)
+        st.success("API_KEY가 저장되었습니다.")
+
+    if button:
+        save_api_key(api_key)
+        if api_key == "":
+            st.error("API_KEY를 넣어주세요.")         
+
     docs = None
-    choice = st.selectbox(
-        "Choose what you want to use.",
-        (
-            "File",
-            "Wikipedia Article",
-        ),
-    )
-    if choice == "File":
-        file = st.file_uploader(
-            "Upload a .docx , .txt or .pdf file",
-            type=["pdf", "txt", "docx"],
+    if (st.session_state["api_key_bool"] == True) and (st.session_state["api_key"] != None):
+        choice = st.selectbox(
+            "Choose what you want to use.",
+            (
+                "File",
+                "Wikipedia Article",
+            ),
         )
-        if file:
-            docs = split_file(file)
+        if choice == "File":
+            file = st.file_uploader(
+                "Upload a .docx , .txt or .pdf file",
+                type=["pdf", "txt", "docx"],
+            )
+            if file:
+                docs = split_file(file)
+        else:
+            topic = st.text_input("Search Wikipedia...")
+            if topic:
+                docs = wiki_search(topic)
     else:
-        topic = st.text_input("Search Wikipedia...")
-        if topic:
-            docs = wiki_search(topic)
+        st.error("API_KEY를 넣어주세요.")
 
     st.subheader("JHUN'S GitHub Repository")
     st.write("https://github.com/jeonghun94/gpt/blob/main/pages/03_QuizGPT.py")         
@@ -304,43 +334,30 @@ if not docs:
     """
     )
 else:
-    response = run_quiz_chain(docs, topic if topic else file.name)
-
-    with st.form("questions_form"):
-        correct_answers_count = 0 
-        total_questions = len(response["questions"]) 
-        
-        for idx, question in enumerate(response["questions"]):
-            st.write(question["question"])
-            options = [answer["answer"] for answer in question["answers"]]
-            value = st.radio(f"{idx+1}. 옵션을 선택하세요", options, key=f"{idx}_radio")
-            
-            if {"answer": value, "correct": True} in question["answers"]:
-                st.success("정답입니다!")
-                correct_answers_count += 1
-            elif value is not None:
-                st.error("틀렸습니다.")
-        
-        submitted = st.form_submit_button("제출하기")
-        
-        if submitted:
-            if correct_answers_count == total_questions:
-                st.balloons()
-                st.success(f"축하합니다! 모든 문제를 맞추셨습니다!")
-            else:
-                st.error(f"재시험을 보셔야 합니다. {correct_answers_count}/{total_questions} 문제를 맞추셨습니다.")
-
     
-    # with st.form("questions_form"):
-    #     # st.write(response)
-    #     for idx, question in enumerate(response["questions"]):
-    #         st.write(question["question"])
-    #         value = st.radio(f"Select an option {idx}", [answer["answer"] for answer in question["answers"]],
-    #         key=f"{idx}_radio",
-    #         index=None
-    #         )
-    #         if {"answer": value, "correct": True} in question["answers"]:
-    #             st.success("Correct")
-    #         elif value is not None:
-    #             st.error("Wrong")
-    #     button = st.form_submit_button()
+        response = run_quiz_chain(docs, topic if topic else file.name)
+
+        with st.form("questions_form"):
+            correct_answers_count = 0 
+            total_questions = len(response["questions"]) 
+            
+            for idx, question in enumerate(response["questions"]):
+                st.write(question["question"])
+                options = [answer["answer"] for answer in question["answers"]]
+                value = st.radio(f"{idx+1}. 옵션을 선택하세요", options, key=f"{idx}_radio")
+                
+                if {"answer": value, "correct": True} in question["answers"]:
+                    st.success("정답입니다!")
+                    correct_answers_count += 1
+                elif value is not None:
+                    st.error("틀렸습니다.")
+            
+            submitted = st.form_submit_button("제출하기")
+            
+            if submitted:
+                if correct_answers_count == total_questions:
+                    st.balloons()
+                    st.success(f"축하합니다! 모든 문제를 맞추셨습니다!")
+                else:
+                    st.error(f"재시험을 보셔야 합니다. {correct_answers_count}/{total_questions} 문제를 맞추셨습니다.")
+    
