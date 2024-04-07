@@ -1,13 +1,13 @@
-import json
-
-from langchain.document_loaders import UnstructuredFileLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
-import streamlit as st
-from langchain.retrievers import WikipediaRetriever
+from langchain.document_loaders import UnstructuredFileLoader
 from langchain.schema import BaseOutputParser, output_parser
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.retrievers import WikipediaRetriever
+from langchain.prompts import ChatPromptTemplate
+from langchain.chat_models import ChatOpenAI
+import streamlit as st
+import json
+import os
 
 
 class JsonOutputParser(BaseOutputParser):
@@ -25,13 +25,51 @@ st.set_page_config(
 
 st.title("QuizGPT")
 
+function_calling = {
+    "name": "create_quiz",
+    "description": "function that takes a list of questions and answers and returns a quiz",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                        },
+                        "answers": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "answer": {
+                                        "type": "string",
+                                    },
+                                    "correct": {
+                                        "type": "boolean",
+                                    },
+                                },
+                                "required": ["answer", "correct"],
+                            },
+                        },
+                    },
+                    "required": ["question", "answers"],
+                },
+            }
+        },
+        "required": ["questions"],
+    },
+}
+
+
 llm = ChatOpenAI(
     temperature=0.1,
     model="gpt-3.5-turbo-1106",
     streaming=True,
     callbacks=[StreamingStdOutCallbackHandler()],
 )
-
 
 def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
@@ -270,8 +308,8 @@ with st.sidebar:
         choice = st.selectbox(
             "Choose what you want to use.",
             (
-                "File",
                 "Wikipedia Article",
+                "File",
             ),
         )
         if choice == "File":
