@@ -1,20 +1,18 @@
-import json
 
-from langchain.document_loaders import UnstructuredFileLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
-import streamlit as st
-from langchain.retrievers import WikipediaRetriever
+from langchain.document_loaders import UnstructuredFileLoader
 from langchain.schema import BaseOutputParser, output_parser
-
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.retrievers import WikipediaRetriever
+from langchain.prompts import ChatPromptTemplate
+from langchain.chat_models import ChatOpenAI
+import streamlit as st
+import json
 
 class JsonOutputParser(BaseOutputParser):
     def parse(self, text):
         text = text.replace("```", "").replace("json", "")
         return json.loads(text)
-
 
 output_parser = JsonOutputParser()
 
@@ -307,16 +305,42 @@ if not docs:
     )
 else:
     response = run_quiz_chain(docs, topic if topic else file.name)
+
     with st.form("questions_form"):
-        # st.write(response)
+        correct_answers_count = 0 
+        total_questions = len(response["questions"]) 
+        
         for idx, question in enumerate(response["questions"]):
             st.write(question["question"])
-            value = st.radio(f"Select an option {idx}", [answer["answer"] for answer in question["answers"]],
-            key=f"{idx}_radio",
-            index=None
-            )
+            options = [answer["answer"] for answer in question["answers"]]
+            value = st.radio(f"{idx+1}. 옵션을 선택하세요", options, key=f"{idx}_radio")
+            
             if {"answer": value, "correct": True} in question["answers"]:
-                st.success("Correct")
+                st.success("정답입니다!")
+                correct_answers_count += 1
             elif value is not None:
-                st.error("Wrong")
-        button = st.form_submit_button()
+                st.error("틀렸습니다.")
+        
+        submitted = st.form_submit_button("제출하기")
+        
+        if submitted:
+            if correct_answers_count == total_questions:
+                st.balloons()
+                st.success(f"축하합니다! 모든 문제를 맞추셨습니다!")
+            else:
+                st.error(f"재시험을 보셔야 합니다. {correct_answers_count}/{total_questions} 문제를 맞추셨습니다.")
+
+    
+    # with st.form("questions_form"):
+    #     # st.write(response)
+    #     for idx, question in enumerate(response["questions"]):
+    #         st.write(question["question"])
+    #         value = st.radio(f"Select an option {idx}", [answer["answer"] for answer in question["answers"]],
+    #         key=f"{idx}_radio",
+    #         index=None
+    #         )
+    #         if {"answer": value, "correct": True} in question["answers"]:
+    #             st.success("Correct")
+    #         elif value is not None:
+    #             st.error("Wrong")
+    #     button = st.form_submit_button()
