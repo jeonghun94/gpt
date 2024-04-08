@@ -203,4 +203,4 @@ else:
 
 with st.sidebar:
     st.subheader("JHUN'S GitHub Repository")
-    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/03_QuizGPT.py")
+    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/04_SiteGPT.py")
