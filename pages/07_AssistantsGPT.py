@@ -3,6 +3,9 @@ import streamlit as st
 import openai as client
 import re
 
+
+print(client.__version__)
+
 assistant_pattern = r'asst_.*'
 api_pattern = r'sk-.*'
 
