@@ -120,4 +120,4 @@ else:
 
 with st.sidebar:
     st.subheader("JHUN'S GitHub Repository")
-    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/07_SiteGPT.py")    
+    st.write("https://github.com/jeonghun94/gpt/blob/main/pages/07_AssistantsGPT.py")    
